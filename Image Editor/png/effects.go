@@ -1,0 +1,126 @@
+// Package png allows for loading png images and applying
+// image flitering effects on them.
+package png
+
+import (
+	"image/color"
+	"proj1/ppsync"
+	"sync"
+)
+
+// Grayscale applies a grayscale filtering effect to the image
+func (img *Image) Grayscale() {
+	// Bounds returns defines the dimensions of the image. Always
+	// use the bounds Min and Max fields to get out the width
+	// and height for the image
+	bounds := img.Out.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			//Returns the pixel (i.e., RGBA) value at a (x,y) position
+			// Note: These get returned as int32 so based on the math you'll
+			// be performing you'll need to do a conversion to float64(..)
+			r, g, b, a := img.In.At(x, y).RGBA()
+			//Note: The values for r,g,b,a for this assignment will range between [0, 65535].
+			//For certain computations (i.e., convolution) the values might fall outside this
+			// range so you need to clamp them between those values.
+			greyC := clamp(float64(r+g+b) / 3)
+
+			//Note: The values need to be stored back as uint16 (I know weird..but there's valid reasons
+			// for this that I won't get into right now).
+			img.Out.Set(x, y, color.RGBA64{greyC, greyC, greyC, uint16(a)})
+		}
+	}
+}
+
+func Grays_slice(img *Image, start, end int, wg *sync.WaitGroup, lock *ppsync.PPLock) {
+	bounds := img.Out.Bounds()
+	end = min(end, bounds.Max.X)
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := start; x <= end; x++ {
+			r, g, b, a := img.In.At(x, y).RGBA()
+			greyC := clamp(float64(r+g+b) / 3)
+			//lock.Lock()
+			img.Out.Set(x, y, color.RGBA64{greyC, greyC, greyC, uint16(a)})
+			//lock.Unlock()
+		}
+	}
+	wg.Done()
+}
+
+func Conv(img *Image, kernel [][]float64) {
+	bounds := img.Bounds
+	width, height := bounds.Max.X, bounds.Max.Y
+	for x := 0; x < width; x++ {
+		for y := 0; y < height; y++ {
+			if x < len(kernel[0])/2 || x >= width-len(kernel[0])/2 || y < len(kernel)/2 || y >= height-len(kernel)/2 {
+				img.Out.Set(x, y, img.In.At(x, y))
+				continue
+			}
+			var newRed, newGreen, newBlue float64
+			for ky := range kernel {
+				for kx := range kernel[ky] {
+					imgX, imgY := x+kx-len(kernel[0])/2, y+ky-len(kernel)/2
+					pixel := img.In.At(imgX, imgY)
+					r, g, b, _ := pixel.RGBA()
+					newRed += float64(r) * kernel[ky][kx]
+					newGreen += float64(g) * kernel[ky][kx]
+					newBlue += float64(b) * kernel[ky][kx]
+				}
+			}
+			_, _, _, original_alpha := img.In.At(x, y).RGBA()
+			img.Out.Set(x, y, color.RGBA64{clamp(newRed), clamp(newGreen), clamp(newBlue), uint16(original_alpha)})
+		}
+	}
+}
+
+func Conv_slice(img *Image, e string, start, end int, wg *sync.WaitGroup, lock *ppsync.PPLock) {
+	effMap := map[string][][]float64{
+		"S": {{0, -1, 0},
+			{-1, 5, -1},
+			{0, -1, 0}},
+		"E": {{-1, -1, -1},
+			{-1, 8, -1},
+			{-1, -1, -1}},
+		"B": {{1 / 9.0, 1 / 9, 1 / 9.0},
+			{1 / 9.0, 1 / 9.0, 1 / 9.0},
+			{1 / 9.0, 1 / 9.0, 1 / 9.0}},
+	}
+	kernel := effMap[e]
+	bounds := img.Bounds
+	width, height := bounds.Max.X, bounds.Max.Y
+	end = min(end, width)
+	for x := start; x <= end; x++ {
+		for y := 0; y < height; y++ {
+			/*if x-start < len(kernel[0])/2 || x >= end-len(kernel[0])/2 || y < len(kernel)/2 || y >= height-len(kernel)/2 {
+				img.Out.Set(x, y, img.In.At(x, y))
+				continue
+			}*/
+			var newRed, newGreen, newBlue float64
+			for ky := range kernel {
+				for kx := range kernel[ky] {
+					imgX, imgY := x + kx - len(kernel[0])/2, y + ky- len(kernel)/2
+					pixel := img.In.At(imgX, imgY)
+					r, g, b, _ := pixel.RGBA()
+					newRed += float64(r) * kernel[ky][kx]
+					newGreen += float64(g) * kernel[ky][kx]
+					newBlue += float64(b) * kernel[ky][kx]
+				}
+			}
+			_, _, _, original_alpha := img.In.At(x, y).RGBA()
+			//lock.Lock()
+			if x <= end-2 && x >= start+1 {
+				img.Out.Set(x, y, color.RGBA64{clamp(newRed), clamp(newGreen), clamp(newBlue), uint16(original_alpha)})
+			}
+			//lock.Unlock()
+		}
+	}
+	wg.Done()
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	} else {
+		return b
+	}
+}
