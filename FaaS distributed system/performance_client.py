@@ -28,8 +28,8 @@ def test_latency(number_of_tasks):
         task_id = resp.json()["task_id"]
         tasks.append(task_id)
 
-    assert resp.status_code in [200, 201]
-    assert "task_id" in resp.json()
+        assert resp.status_code in [200, 201]
+        assert "task_id" in resp.json()
 
     task_id = resp.json()["task_id"]
     cnt=0
