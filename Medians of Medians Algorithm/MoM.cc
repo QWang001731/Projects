@@ -4,6 +4,21 @@
 #include<cmath>
 #include<cassert>
 using namespace std;
+
+int median_element(vector<int>&v){
+    int n = v.size();
+    sort(v.begin(),v.end());
+    int middle_element=v[(n-1)/2];
+    return middle_element;
+}
+int get_idx(vector<int>&v,int t){
+    int n  = v.size();
+    for(int i=0;i<n;i++)
+        if(v[i]==t) 
+            return i;
+    return -1;
+}
+
 int medianOfMedian(vector<int>&v, int k,int left, int right){
     int n =right - left + 1;
     int m=n/5;
