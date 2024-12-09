@@ -1,9 +1,34 @@
+#include<iostream>
+#include<vector>
+#include<cmath>
+#include<fstream>
+#include<string>
+#include<omp.h>
+#include<random>
 #include<vector>
 #include <iostream>
 #include<algorithm>
 #include<cmath>
 #include<cassert>
+#include<optional>
+
 using namespace std;
+int median_element(vector<optional<int>>&v){
+    int n = v.size();
+    sort(v.begin(),v.end(),[](const auto &a, const auto &b){
+        if(!a) return false;
+        if(!b) return true;
+        return a<b;
+    });
+
+    int i;
+    for(i=0;i<n;i++)
+        if(!v[i].has_value()) 
+            break;
+
+    int middle_element=v[(i-1)/2].value();
+    return middle_element;
+}
 
 int median_element(vector<int>&v){
     int n = v.size();
@@ -18,7 +43,6 @@ int get_idx(vector<int>&v,int t){
             return i;
     return -1;
 }
-
 int medianOfMedian(vector<int>&v, int k,int left, int right){
     int n =right - left + 1;
     int m=n/5;
