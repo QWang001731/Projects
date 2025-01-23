@@ -1,6 +1,7 @@
 #include "neuralNetwork.hpp"
 #include <memory.h>
 #include <math.h>
+#include <iostream>
 #define max(a, b) ((a) > (b))? (a):(b)
 #define NUM_LABEL 10
 #define DEBUG 0
@@ -49,7 +50,7 @@ double* labels = (double*)malloc(sizeof(double)*NUM_LABEL*BatchSize);
 int nbatch = int(numTrain/BatchSize);
 for(int iter=0;iter<niters;iter++)
 {fisher_yates_shuffle(randNum, numTrain);
-std::cout<<"Training started...\n"
+std::cout<<"Training started...\n";
 if(DEBUG)
 {
     double t0=0,t1=0,t2=0,t3=0,t4=0,t5=0,t6=0,t7=0;
